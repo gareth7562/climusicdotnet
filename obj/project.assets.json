@@ -1475,11 +1475,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/gaz/projects/dotnetapp2/dotnetapp2.csproj",
+      "projectUniqueName": "/home/gaz/projects/climusicdotnet/dotnetapp2.csproj",
       "projectName": "dotnetapp2",
-      "projectPath": "/home/gaz/projects/dotnetapp2/dotnetapp2.csproj",
+      "projectPath": "/home/gaz/projects/climusicdotnet/dotnetapp2.csproj",
       "packagesPath": "/home/gaz/.nuget/packages/",
-      "outputPath": "/home/gaz/projects/dotnetapp2/obj/",
+      "outputPath": "/home/gaz/projects/climusicdotnet/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/gaz/.nuget/NuGet/NuGet.Config"
