@@ -1,0 +1,515 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Terminal.Gui;
+using LibVLCSharp.Shared;
+using System.Collections;
+using System.Text.Json;
+using System.Xml.Serialization;
+
+namespace TerminalMP3
+{
+
+    class GUIApp
+    {
+
+        Label selectedTrack = new Label("Choose a track...") { Width = Dim.Fill(), Y = 1 };
+
+        int currentTrack = 0;
+        List<String> musicFiles;
+        FrameView trackPlaying;
+        Label timerText = new Label("Current Time") { Width = Dim.Fill(), Y = 2 };
+        string[] modes = { "Continuous", "Shuffle" };
+        Label modeText;
+        bool shuffle;
+        List<string> playList;
+        string musicDir = @".";
+        TextField entry;
+        ListView MusicView;
+        ListView PlayListView;
+        Toplevel top;
+        Terminal.Gui.Dialog dialog, url_dialog;
+        Random r = new Random();
+        bool dirSet = false;
+        object token;
+        bool token_created = false;
+        MediaPlayer mp;
+        LibVLCSharp.Shared.LibVLC _libVLC;
+        ProgressBar progress;
+        Button pauseButton = new Button(10, 7, "Pause");
+        LastPlayedTrack lastPlayedTrack = new LastPlayedTrack();
+        Label dirText;
+        List<String> dirnames = new List<string>();
+        List<String> filelist = new List<string>();
+
+        List<Track> playListTable = new List<Track>();
+
+        public void Init()
+        {
+            Application.Init();
+            top = Application.Top;
+            modeText = new Label(modes[0].ToString());
+            shuffle = false;
+            LibVLCSharp.Shared.Core.Initialize();
+            
+            _libVLC = new LibVLCSharp.Shared.LibVLC("-I", "null");
+            mp = new MediaPlayer(_libVLC); 
+            mp.TimeChanged += mp_TimeChanged;
+
+            playList = new List<string>();
+        }
+
+        private void mp_TimeChanged(object sender, MediaPlayerTimeChangedEventArgs e)
+        {
+
+		    var current_progress = (float)((double)e.Time / (double)mp.Length);  
+
+	        timerText.Text = TimeSpan.FromMilliseconds(e.Time).ToString().Substring(0, 8) + "/" + TimeSpan.FromMilliseconds(mp.Length).ToString().Substring(0, 8) + "(" + e.Time + "/" + mp.Length + ")" + " " + current_progress;
+		    progress.Fraction = current_progress;
+
+
+        }
+
+
+        public void AddControls()
+        {
+
+            MusicView = new ListView(musicFiles);
+            PlayListView = new ListView(playList);
+
+            MusicView.Width = Dim.Fill();
+            MusicView.Height = Dim.Fill();
+
+            PlayListView.Width = Dim.Fill();
+            PlayListView.Height = Dim.Fill();
+
+            Button playButton = new Button(1, 7, "Play");
+
+            Button set_button = new Button(5, 5, "Ok");
+            Button set_url_button = new Button(5, 5, "Ok");
+
+            Button bookMarkButton = new Button(20, 7, "Bookmark");
+            dirText = new Label(new Rect(1, 1, 256, 20), "Current Directory");
+            var sItemPause = new StatusItem(Key.Space, "SPACE - Pause/Resume", ()=> {
+                
+                if(mp.IsPlaying)
+                {
+                    mp.SetPause(true);
+                    pauseButton.Text = "Resume";
+                }
+                else
+                {
+                    mp.SetPause(false);
+                    pauseButton.Text = "Pause";
+                }
+
+            });
+
+            var sItemFastForward = new StatusItem(Key.ControlF, "Ctrl + F - Fast forward", ()=> {
+                mp.Position += 0.01F;
+            });
+
+            StatusItem[] statusItems = {sItemPause, sItemFastForward};
+            var statusBar = new StatusBar(statusItems);
+
+
+            playButton.Clicked += () => {
+                playTrack();
+            };
+
+            bookMarkButton.Clicked += () => {
+                mp.SetPause(true);
+                lastPlayedTrack.write(playListTable, mp.Time, currentTrack, musicDir);
+            };
+
+            pauseButton.Clicked += () => {
+
+                if(pauseButton.Text == "Resume")
+                {
+                    mp.SetPause(false);
+                    pauseButton.Text = "Pause";
+                }
+                else
+                {
+                    mp.SetPause(true);
+                    pauseButton.Text = "Resume";
+                }
+            };
+
+            MusicView.OpenSelectedItem += openDialogClicked;
+            MusicView.SelectedItemChanged += musicViewSelect;
+            PlayListView.OpenSelectedItem += playListClicked;
+
+            dialog = new Terminal.Gui.Dialog("Enter Music Directory", 50, 10, set_button);
+            url_dialog = new Terminal.Gui.Dialog("Enter URL", 50, 10, set_url_button);
+            url_dialog.Visible = false;
+
+            entry = new TextField()
+            {
+                X = 1,
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = 1
+            };
+
+            var url_entry = new TextField()
+            {
+                X = 1,
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = 1
+            };
+
+            url_dialog.Add(url_entry);
+            dialog.Add(entry);
+
+            var menu = new MenuBar(new MenuBarItem[] {
+            new MenuBarItem ("_File", new MenuItem [] {
+                new MenuItem ("_Open Music DIR", "", () => {
+                    dialog.Visible = true;
+                    entry.SetFocus();
+                }),
+
+                  new MenuItem ("_Add All", "", () => {
+                       
+                    foreach(string filename in filelist)
+                    {
+                        playList.Add(Path.GetFileName(filename));
+                        var track = new Track();
+                        track.title = Path.GetFileName(filename);
+                        track.directory = filename;
+                        playListTable.Add(track);
+                    }
+                    PlayListView.SetSource(playList);
+                    
+                }),
+
+                   new MenuItem ("_Open URL", "", () => {
+                    url_dialog.Visible = true;
+                    url_entry.SetFocus();
+
+                }),
+
+                  new MenuItem ("_Exit","", () => {
+                      mp.SetPause(true);
+                      lastPlayedTrack.write(playListTable, mp.Time, currentTrack, musicDir);
+                    Application.RequestStop ();
+                })
+            }),
+
+            new MenuBarItem ("_Playlist", new MenuItem [] {
+                new MenuItem ("_Play","", () => {
+                    if(playList.Count >= 1)
+                        playTrack();
+                }),
+                new MenuItem("_Clear","", () => {
+                    //clear all items from playlist
+                    mp.Stop();
+                    playList.Clear();
+                    playListTable.Clear();
+                    PlayListView.SetSource(playList);
+
+
+                }),
+
+            }),
+
+            new MenuBarItem ("_Mode", new MenuItem [] {
+                new MenuItem ("_Shuffle","", () => {
+                    shuffle = true;
+                    modeText.Text = modes[1].ToString();
+                    currentTrack = r.Next(playList.Count);
+                    playTrack();
+
+                }),
+                new MenuItem("_Continuous","", () =>
+                {
+                    shuffle = false;
+                    modeText.Text = modes[0].ToString();
+                }),
+
+            }),
+        });
+
+            top.Add(menu);
+
+
+            set_button.Clicked += buttonClicked;
+            set_url_button.Clicked += () => {
+
+                playList.Add(url_entry.Text.ToString());
+                var track = new Track();
+                track.title = url_entry.Text.ToString();
+                track.directory = url_entry.Text.ToString();;
+                playListTable.Add(track);
+                url_dialog.Visible = false;
+                
+            };
+
+
+        
+
+          
+            if(!dirSet)
+            {
+                dialog.Visible = false;
+                listDirContents();
+            }
+
+
+            trackPlaying = new FrameView("Current Track")
+            {
+                X = 0,
+                Y = 1,
+
+                Height = Dim.Percent(40, true),
+                Width = Dim.Percent(48, true)
+
+            };
+
+           
+                      
+            var PlayListWindow = new FrameView("PlayList")
+            {
+                X = 0,
+                Y = Pos.Bottom(trackPlaying),
+                Height = Dim.Percent(80, true),
+                Width = Dim.Percent(48, true)
+            };
+
+          
+
+
+	    progress = new ProgressBar(new Rect(0, 4, 32, 1)) {
+	
+	    };
+	    progress.Fraction = 0F;
+            PlayListWindow.Add(PlayListView);
+
+            trackPlaying.Add(
+                selectedTrack,
+                timerText,
+                modeText
+                );
+            var win = new FrameView("Music Files")
+            {
+                X = Pos.Right(trackPlaying),
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = Dim.Percent(88, true)
+
+
+            };
+            win.Add(   
+                      MusicView
+
+                        );
+
+            var currentDirWindow = new FrameView("Currently Browsing")
+            {
+                X = 0,
+                Y = Pos.Bottom(win),
+                Width = Dim.Percent(100, true),
+                Height = Dim.Percent(90, true)
+                
+            };
+            entry.SetFocus();
+
+            top.Add(trackPlaying);
+            top.Add(win);
+            top.Add(PlayListWindow, dialog, statusBar, url_dialog);
+            trackPlaying.Add(bookMarkButton, progress, playButton, pauseButton);
+            timerText.Text = "";
+
+            currentDirWindow.Add(dirText);
+            top.Add(currentDirWindow);
+
+            top.Width = Dim.Percent(100, true);
+            top.Height = Dim.Percent(100, true);
+            lastPlayedTrack.load();
+            if(lastPlayedTrack.playlist_exists)
+            {
+                playList.Clear();
+
+                playListTable = lastPlayedTrack.getPlayListFiles();
+                foreach(Track t in playListTable) {
+                    playList.Add(t.title);
+                }
+                PlayListView.SetSource(playList);
+
+                if(playList.Count > 0)
+                {
+                    currentTrack = lastPlayedTrack.getPlaylistPosition();
+                    playTrack();
+                    mp.Time = lastPlayedTrack.getTrackTime();
+                }
+                if(lastPlayedTrack.file_exists)
+                musicDir = lastPlayedTrack.getLastDirectory();
+                listDirContents();
+
+            }
+
+            Application.Resized += windowResized;
+
+            Application.Run();
+
+        }
+
+        void windowResized(Application.ResizedEventArgs args)
+        {
+            top.Height = Dim.Fill();
+            top.Width = Dim.Fill();
+            
+
+        }
+        
+        private void listDirContents()
+        {
+
+            var dirs = Directory.GetDirectories(musicDir);
+        
+
+    
+            musicFiles = Directory.GetFiles(musicDir, "*.*").Where(file => file.ToLower().EndsWith(".mp3") || file.ToLower().EndsWith(".m4a") || file.ToLower().EndsWith(".flac")).ToList<string>();
+            
+            filelist.Clear();
+
+            var filenames = new List<String>();
+            dirnames = new List<String>();
+            foreach(string file in musicFiles) {
+                filenames.Add(Path.GetFileName(file));
+                filelist.Add(file);
+            }
+            dirnames.Insert(0, "...");
+            filenames.Insert(0, "...");
+
+            foreach (var dir in dirs)
+            {
+
+                var dirName = Path.GetFileName(dir) + "/";
+                dirnames.Insert(1, dir);
+                filenames.Insert(1, dirName);
+
+            }
+
+
+            dirText.Text = new DirectoryInfo(musicDir).Name + " on " + Path.GetPathRoot(musicDir);
+
+            MusicView.SetSource(filenames);
+            MusicView.SetFocus();
+        }
+        private void buttonClicked()
+        {
+            musicDir = @entry.Text.ToString();
+            listDirContents();
+            dialog.Visible = false;
+            MusicView.SetFocus();
+    
+
+        }
+
+        private void musicViewSelect(ListViewItemEventArgs obj)
+        {
+            if(obj.Value.ToString() == "...")
+            {
+                dirText.Text = "Go up a directory";
+                return;
+            }
+            dirText.Text = new DirectoryInfo(obj.Value.ToString()).Name + " on " + Path.GetPathRoot(musicDir);
+        }
+        private void openDialogClicked(ListViewItemEventArgs obj)
+        {
+            
+            //selectedTrack.Text = obj.Value.ToString();
+
+                if(obj.Value.ToString() != "...")
+		        {
+                    if(dirnames.Count > 0 && obj.Item <= dirnames.Count - 1)
+                    {
+                            FileAttributes attr = File.GetAttributes(dirnames[obj.Item]);
+                        if((attr & FileAttributes.Directory) == FileAttributes.Directory)
+                        {
+                                musicDir = dirnames[obj.Item];
+                                listDirContents();        
+                                return;
+                        }
+                    }
+		        }
+
+                if(obj.Value.ToString() != "...")
+                {
+
+
+
+                    dirText.Text = musicDir.ToString();
+                    var filename = Path.GetFileName(filelist[obj.Item - dirnames.Count]);
+                    playList.Add(filename);
+                    var track = new Track();
+                    track.title = filename;
+                    track.directory = filelist[obj.Item - dirnames.Count];
+                    playListTable.Add(track);
+                    PlayListView.SetSource(playList);
+                }
+                else
+                {
+                    
+                    if(Directory.GetDirectoryRoot(musicDir) != musicDir)
+                    {
+                        var temp = Directory.GetParent(musicDir).ToString();
+                        musicDir = temp;
+                        listDirContents();
+                    }
+                }
+
+        }
+
+        private void playListClicked(ListViewItemEventArgs obj)
+        {
+            int selected_Item = obj.Item;
+            selectedTrack.Text = Path.GetFileName(playList[selected_Item].ToString());
+            currentTrack = selected_Item;
+
+            playTrack();
+        }
+
+        private void playTrack()
+        {
+
+            selectedTrack.Text = Path.GetFileName(playList[currentTrack]);
+            progress.Fraction = 0F; 
+            
+            var media1 = new Media(_libVLC, playListTable[currentTrack].directory, FromType.FromPath);
+            mp.Play(media1);
+            if (!token_created)
+            {
+                token = Application.MainLoop.AddTimeout(TimeSpan.FromSeconds(1), UpdateTimer);
+                token_created = true;
+            }
+        }
+
+        private bool UpdateTimer(MainLoop arg)
+        {
+
+
+            if (mp.State != VLCState.Playing && currentTrack < playList.Count - 1 && mp.State != VLCState.Paused)
+            {
+                if (shuffle)
+                {
+                    currentTrack = r.Next(playList.Count - 1);
+                }
+                else
+                {
+                    if(currentTrack < playList.Count - 1)
+                    currentTrack += 1;
+                }
+                mp.SetPause(false);
+                pauseButton.Text = "Pause";
+                playTrack();
+            }
+		return true;
+        }
+    }
+}

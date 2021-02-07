@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "gXdpdoe0Skb4cZ1j0e/B807z+CkPxlj9JElNgO+OiqPc9eSFi4sVBlQM6bHGFMqnEj6pviBqwN44v3VfEqDP/Q==",
+  "success": true,
+  "projectFilePath": "/home/gaz/projects/dotnetapp2/dotnetapp2.csproj",
+  "expectedPackageFiles": [
+    "/home/gaz/.nuget/packages/libvlcsharp/3.4.9/libvlcsharp.3.4.9.nupkg.sha512",
+    "/home/gaz/.nuget/packages/microsoft.netframework.referenceassemblies/1.0.0/microsoft.netframework.referenceassemblies.1.0.0.nupkg.sha512",
+    "/home/gaz/.nuget/packages/nstack.core/0.14.0/nstack.core.0.14.0.nupkg.sha512",
+    "/home/gaz/.nuget/packages/terminal.gui/0.90.3/terminal.gui.0.90.3.nupkg.sha512",
+    "/home/gaz/.nuget/packages/videolan.libvlc.windows/3.0.12/videolan.libvlc.windows.3.0.12.nupkg.sha512",
+    "/home/gaz/.nuget/packages/microsoft.aspnetcore.app.ref/5.0.0/microsoft.aspnetcore.app.ref.5.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

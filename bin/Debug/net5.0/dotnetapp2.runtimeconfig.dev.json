@@ -1,0 +1,8 @@
+{
+  "runtimeOptions": {
+    "additionalProbingPaths": [
+      "/home/gaz/.dotnet/store/|arch|/|tfm|",
+      "/home/gaz/.nuget/packages"
+    ]
+  }
+}
