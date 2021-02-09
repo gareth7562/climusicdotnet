@@ -202,7 +202,14 @@ namespace TerminalMP3
 
             new MenuBarItem ("_Playlist", new MenuItem [] {
                 new MenuItem ("_Play","", () => {
-                    if(playList.Count >= 1)
+                    if(playList.Count >= 1 && PlayListView.SelectedItem > 0)
+                    {
+                    currentTrack = PlayListView.SelectedItem;
+                    }
+                    else
+                    {
+                        currentTrack = 0;
+                    }
                         playTrack();
                 }),
                 new MenuItem("_Clear","", () => {
