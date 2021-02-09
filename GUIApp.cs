@@ -46,6 +46,7 @@ namespace CLIMusicDotNet
         public void Init()
         {
             Application.Init();
+
             top = Application.Top;
             modeText = new Label(modes[0].ToString());
             shuffle = false;
@@ -376,13 +377,20 @@ namespace CLIMusicDotNet
         
         private void listDirContents()
         {
-
-            var dirs = Directory.GetDirectories(musicDir);
-        
+            string[] dirs = {};
+            try {
+                dirs = Directory.GetDirectories(musicDir);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                MessageBox.ErrorQuery("Access Denied.", "Press Escape To Continue");
+                return;
+            }
 
             string[] fileTypes = {".mp3", ".flac", ".m4a", ".ogg", ".wav", ".aac", ".opus"};
+
+        
             musicFiles = Directory.GetFiles(musicDir, "*.*").ToList().Where(f => fileTypes.Contains(new FileInfo(f).Extension.ToLower())).ToList();
-            
             
             filelist.Clear();
 
@@ -409,6 +417,7 @@ namespace CLIMusicDotNet
 
             MusicView.SetSource(filenames);
             MusicView.SetFocus();
+
         }
         private void buttonClicked()
         {

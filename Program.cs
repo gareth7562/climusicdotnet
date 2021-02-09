@@ -12,14 +12,8 @@ namespace CLIMusicDotNet
     class Program
     {
 
-
-
-
-
         static void Main(string[] args)
         {
-
-
 
             GUIApp CLIMusicDotNetApp = new GUIApp();
 
@@ -28,7 +22,6 @@ namespace CLIMusicDotNet
         }
 
    
-
         private static void MusicView_OpenSelectedItem(ListViewItemEventArgs obj)
         {
             throw new NotImplementedException();
