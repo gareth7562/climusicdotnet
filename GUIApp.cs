@@ -2,15 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Terminal.Gui;
 using LibVLCSharp.Shared;
-using System.Collections;
-using System.Text.Json;
-using System.Xml.Serialization;
 
-namespace TerminalMP3
+
+namespace CLIMusicDotNet
 {
 
     class GUIApp
@@ -108,7 +104,7 @@ namespace TerminalMP3
 
             });
 
-            var sItemFastForward = new StatusItem(Key.ControlF, "Ctrl + F - Fast forward", ()=> {
+            var sItemFastForward = new StatusItem(Key.ControlF, "Ctrl + F - Fast Forward", ()=> {
                 mp.Position += 0.01F;
             });
 
@@ -196,7 +192,12 @@ namespace TerminalMP3
                   new MenuItem ("_Exit","", () => {
                       mp.SetPause(true);
                       lastPlayedTrack.write(playListTable, mp.Time, currentTrack, musicDir);
-                    Application.RequestStop ();
+                      top.Running = false;
+
+                      cleanUp();
+
+                      
+                      
                 })
             }),
 
@@ -204,16 +205,16 @@ namespace TerminalMP3
                 new MenuItem ("_Play","", () => {
                     if(playList.Count >= 1 && PlayListView.SelectedItem > 0)
                     {
-                    currentTrack = PlayListView.SelectedItem;
+                        currentTrack = PlayListView.SelectedItem;
                     }
                     else
                     {
                         currentTrack = 0;
                     }
-                        playTrack();
+                    
+                    playTrack();
                 }),
                 new MenuItem("_Clear","", () => {
-                    //clear all items from playlist
                     mp.Stop();
                     playList.Clear();
                     playListTable.Clear();
@@ -290,10 +291,10 @@ namespace TerminalMP3
           
 
 
-	    progress = new ProgressBar(new Rect(0, 4, 32, 1)) {
-	
-	    };
-	    progress.Fraction = 0F;
+            progress = new ProgressBar(new Rect(0, 4, 32, 1)) {
+        
+            };
+	        progress.Fraction = 0F;
             PlayListWindow.Add(PlayListView);
 
             trackPlaying.Add(
@@ -379,8 +380,9 @@ namespace TerminalMP3
             var dirs = Directory.GetDirectories(musicDir);
         
 
-    
-            musicFiles = Directory.GetFiles(musicDir, "*.*").Where(file => file.ToLower().EndsWith(".mp3") || file.ToLower().EndsWith(".m4a") || file.ToLower().EndsWith(".flac")).ToList<string>();
+            string[] fileTypes = {".mp3", ".flac", ".m4a", ".ogg", ".wav", ".aac", ".opus"};
+            musicFiles = Directory.GetFiles(musicDir, "*.*").ToList().Where(f => fileTypes.Contains(new FileInfo(f).Extension.ToLower())).ToList();
+            
             
             filelist.Clear();
 
@@ -429,8 +431,6 @@ namespace TerminalMP3
         }
         private void openDialogClicked(ListViewItemEventArgs obj)
         {
-            
-            //selectedTrack.Text = obj.Value.ToString();
 
                 if(obj.Value.ToString() != "...")
 		        {
@@ -516,7 +516,14 @@ namespace TerminalMP3
                 pauseButton.Text = "Pause";
                 playTrack();
             }
-		return true;
+		    return true;
+        }
+
+
+        private void cleanUp()
+        {
+            string strCommand = "reset";
+            System.Diagnostics.Process.Start(strCommand);
         }
     }
 }

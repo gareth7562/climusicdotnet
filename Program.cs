@@ -7,7 +7,7 @@ using Terminal.Gui;
 using System.IO;
 
 
-namespace TerminalMP3
+namespace CLIMusicDotNet
 {
     class Program
     {
@@ -21,10 +21,10 @@ namespace TerminalMP3
 
 
 
-            GUIApp TerminalMp3 = new GUIApp();
+            GUIApp CLIMusicDotNetApp = new GUIApp();
 
-            TerminalMp3.Init();
-            TerminalMp3.AddControls();
+            CLIMusicDotNetApp.Init();
+            CLIMusicDotNetApp.AddControls();
         }
 
    
