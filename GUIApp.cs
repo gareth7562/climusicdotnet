@@ -601,12 +601,19 @@ namespace CLIMusicDotNet
                 await media1.Parse(MediaParseOptions.ParseLocal);
                 var artist = media1.Meta(MetadataType.Artist);
                 var title = media1.Meta(MetadataType.Title);
-                selectedTrackTitle.Text = title;
+
+                if(title != null)
+                    selectedTrackTitle.Text = title;
+                else
+                {
+                    selectedTrackTitle.Text = playListTable[currentTrack].title;
+                }
                 if(artist != null)
                 selectedTrackArtist.Text = artist;
                 else
                 {
                     artist = "";
+                    selectedTrackArtist.Text  = artist;
                 }
                 
             
