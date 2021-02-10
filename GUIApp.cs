@@ -88,7 +88,17 @@ namespace CLIMusicDotNet
             Button set_button = new Button(5, 5, "Ok");
             Button set_url_button = new Button(5, 5, "Ok");
 
-            Button bookMarkButton = new Button(20, 7, "Bookmark");
+
+            Button bookMarkButton = new Button(30, 7, "Bookmark");
+            Button skipButton = new Button(20, 7, "Skip");
+
+            skipButton.Clicked += () => {
+
+                nextTrack();
+
+                
+            
+            };
             dirText = new Label(new Rect(1, 1, 256, 20), "Current Directory");
             var sItemPause = new StatusItem(Key.Space, "SPACE - Pause/Resume", ()=> {
                 
@@ -105,11 +115,16 @@ namespace CLIMusicDotNet
 
             });
 
-            var sItemFastForward = new StatusItem(Key.ControlF, "Ctrl + F - Fast Forward", ()=> {
+            var sItemFastForward = new StatusItem(Key.ControlF, "Ctrl + F - Fast Forward", () => {
                 mp.Position += 0.01F;
             });
 
-            StatusItem[] statusItems = {sItemPause, sItemFastForward};
+            var sItemSkipTrack = new StatusItem(Key.ControlS, "Ctrl + S - Skip Track", () => {
+                nextTrack();
+
+            });
+
+            StatusItem[] statusItems = {sItemPause, sItemFastForward, sItemSkipTrack};
             var statusBar = new StatusBar(statusItems);
 
 
@@ -230,8 +245,7 @@ namespace CLIMusicDotNet
                 new MenuItem ("_Shuffle","", () => {
                     shuffle = true;
                     modeText.Text = modes[1].ToString();
-                    currentTrack = r.Next(playList.Count);
-                    playTrack();
+                    nextTrack();
 
                 }),
                 new MenuItem("_Continuous","", () =>
@@ -335,7 +349,7 @@ namespace CLIMusicDotNet
             top.Add(trackPlaying);
             top.Add(win);
             top.Add(PlayListWindow, dialog, statusBar, url_dialog);
-            trackPlaying.Add(bookMarkButton, progress, playButton, pauseButton);
+            trackPlaying.Add(bookMarkButton, progress, playButton, pauseButton, skipButton);
             timerText.Text = "";
 
             currentDirWindow.Add(dirText);
@@ -358,7 +372,9 @@ namespace CLIMusicDotNet
                 {
                     currentTrack = lastPlayedTrack.getPlaylistPosition();
                     playTrack();
+                    
                     mp.Time = lastPlayedTrack.getTrackTime();
+                    
                 }
                 if(lastPlayedTrack.file_exists)
                 musicDir = lastPlayedTrack.getLastDirectory();
@@ -404,7 +420,6 @@ namespace CLIMusicDotNet
 
             string[] fileTypes = {".mp3", ".flac", ".m4a", ".ogg", ".wav", ".aac", ".opus"};
 
-        
             musicFiles = Directory.GetFiles(musicDir, "*.*").ToList().Where(f => fileTypes.Contains(new FileInfo(f).Extension.ToLower())).ToList();
             
             filelist.Clear();
@@ -497,6 +512,33 @@ namespace CLIMusicDotNet
 
         }
 
+        private void nextTrack()
+        {
+
+
+            if(shuffle)
+            {
+                var next_track = r.Next(playList.Count - 1);
+                currentTrack = next_track;
+            }
+            else
+            {
+
+                 if(currentTrack < playList.Count - 1)
+                 {
+                    currentTrack += 1;
+
+                 }
+                else
+                {
+                    currentTrack = 0;
+                }
+            }
+            playTrack();
+
+
+        }
+
         private void playListClicked(ListViewItemEventArgs obj)
         {
 
@@ -526,7 +568,7 @@ namespace CLIMusicDotNet
             else
             {
                 media1 = new Media(_libVLC, playListTable[currentTrack].directory, FromType.FromPath);
-
+                mp.Play(media1);
                 await media1.Parse(MediaParseOptions.ParseLocal);
                 var artist = media1.Meta(MetadataType.Artist);
                 var title = media1.Meta(MetadataType.Title);
@@ -536,7 +578,6 @@ namespace CLIMusicDotNet
                 {
                     selectedTrack.Text = title;
                 }
-                mp.Play(media1);
                 
             
             }
@@ -553,18 +594,12 @@ namespace CLIMusicDotNet
 
             if (mp.State != VLCState.Playing && currentTrack < playList.Count - 1 && mp.State != VLCState.Paused)
             {
-                if (shuffle)
-                {
-                    currentTrack = r.Next(playList.Count - 1);
-                }
-                else
-                {
-                    if(currentTrack < playList.Count - 1)
-                    currentTrack += 1;
-                }
+
                 mp.SetPause(false);
                 pauseButton.Text = "Pause";
-                playTrack();
+                nextTrack();
+
+
             }
 		    return true;
         }
