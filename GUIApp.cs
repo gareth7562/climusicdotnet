@@ -602,7 +602,12 @@ namespace CLIMusicDotNet
                 var artist = media1.Meta(MetadataType.Artist);
                 var title = media1.Meta(MetadataType.Title);
                 selectedTrackTitle.Text = title;
+                if(artist != null)
                 selectedTrackArtist.Text = artist;
+                else
+                {
+                    artist = "";
+                }
                 
             
             }
