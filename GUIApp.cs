@@ -64,7 +64,7 @@ namespace CLIMusicDotNet
 
 		    var current_progress = (float)((double)e.Time / (double)mp.Length);  
 
-	        timerText.Text = TimeSpan.FromMilliseconds(e.Time).ToString().Substring(0, 8) + "/" + TimeSpan.FromMilliseconds(mp.Length).ToString().Substring(0, 8) + "(" + e.Time + "/" + mp.Length + ")" + " " + current_progress;
+	        timerText.Text = TimeSpan.FromMilliseconds(e.Time).ToString().Substring(0, 8) + "/" + TimeSpan.FromMilliseconds(mp.Length).ToString().Substring(0, 8) + " (" + e.Time + "/" + mp.Length + ")" + " " + Convert.ToInt32(current_progress * 100) + "%";
 		    progress.Fraction = current_progress;
 
 
@@ -249,19 +249,24 @@ namespace CLIMusicDotNet
             set_button.Clicked += buttonClicked;
             set_url_button.Clicked += () => {
 
-                playList.Add(url_entry.Text.ToString());
-                var track = new Track();
-                track.title = url_entry.Text.ToString();
-                track.directory = url_entry.Text.ToString();;
-                playListTable.Add(track);
-                url_dialog.Visible = false;
                 
+            if(url_entry.Text.Length <= 0)
+            {
+
+                url_dialog.Visible = false;
+                MessageBox.ErrorQuery("Invalid URL", "Press Escape to continue");
+                PlayListView.SetFocus();
+                return;
+            }
+            playList.Add(url_entry.Text.ToString());
+            var track = new Track();
+            track.title = url_entry.Text.ToString();
+            track.directory = url_entry.Text.ToString();
+
+            playListTable.Add(track);
+            url_dialog.Visible = false;
             };
-
-
-        
-
-          
+            
             if(!dirSet)
             {
                 dialog.Visible = false;
@@ -377,13 +382,23 @@ namespace CLIMusicDotNet
         
         private void listDirContents()
         {
+
+
             string[] dirs = {};
             try {
                 dirs = Directory.GetDirectories(musicDir);
             }
             catch (UnauthorizedAccessException)
             {
+                dialog.Visible = false;
                 MessageBox.ErrorQuery("Access Denied.", "Press Escape To Continue");
+
+                return;
+            }
+            catch(DirectoryNotFoundException)
+            {
+                dialog.Visible = false;
+                MessageBox.ErrorQuery("Invalid Directory.", "Press Escape To Continue");
                 return;
             }
 
@@ -484,21 +499,47 @@ namespace CLIMusicDotNet
 
         private void playListClicked(ListViewItemEventArgs obj)
         {
+
             int selected_Item = obj.Item;
+            if(selected_Item.ToString().Length == 0)
+                return;
+
             selectedTrack.Text = Path.GetFileName(playList[selected_Item].ToString());
             currentTrack = selected_Item;
-
             playTrack();
         }
 
-        private void playTrack()
+        private async void playTrack()
         {
 
             selectedTrack.Text = Path.GetFileName(playList[currentTrack]);
             progress.Fraction = 0F; 
             
-            var media1 = new Media(_libVLC, playListTable[currentTrack].directory, FromType.FromPath);
-            mp.Play(media1);
+            Media media1;
+
+            if(playList[currentTrack].StartsWith("https://"))
+            {
+                media1 = new Media(_libVLC, playListTable[currentTrack].title, FromType.FromLocation);
+                await media1.Parse(MediaParseOptions.ParseNetwork);
+                mp.Play(media1);
+            }
+            else
+            {
+                media1 = new Media(_libVLC, playListTable[currentTrack].directory, FromType.FromPath);
+
+                await media1.Parse(MediaParseOptions.ParseLocal);
+                var artist = media1.Meta(MetadataType.Artist);
+                var title = media1.Meta(MetadataType.Title);
+                if(artist != null)
+                selectedTrack.Text =  artist + " - " + title;
+                else
+                {
+                    selectedTrack.Text = title;
+                }
+                mp.Play(media1);
+                
+            
+            }
             if (!token_created)
             {
                 token = Application.MainLoop.AddTimeout(TimeSpan.FromSeconds(1), UpdateTimer);
