@@ -12,12 +12,13 @@ namespace CLIMusicDotNet
     class GUIApp
     {
 
-        Label selectedTrack = new Label("Choose a track...") { Width = Dim.Fill(), Y = 1 };
+        Label selectedTrackTitle = new Label("Choose a track...") { Width = Dim.Fill() - 1, Y = 2 };
+        Label selectedTrackArtist = new Label() { Width = Dim.Fill() - 1, Y = 1};
 
         int currentTrack = 0;
         List<String> musicFiles;
         FrameView trackPlaying;
-        Label timerText = new Label("Current Time") { Width = Dim.Fill(), Y = 2 };
+        Label timerText = new Label("Current Time") { Width = Dim.Fill(), Y = 4 };
         string[] modes = { "Continuous", "Shuffle" };
         Label modeText;
         bool shuffle;
@@ -35,7 +36,7 @@ namespace CLIMusicDotNet
         MediaPlayer mp;
         LibVLCSharp.Shared.LibVLC _libVLC;
         ProgressBar progress;
-        Button pauseButton = new Button(10, 7, "Pause");
+        Button pauseButton = new Button(10, 8, "Pause");
         LastPlayedTrack lastPlayedTrack = new LastPlayedTrack();
         Label dirText;
         List<String> dirnames = new List<string>();
@@ -47,6 +48,7 @@ namespace CLIMusicDotNet
         {
             Application.Init();
 
+            Application.UseSystemConsole = true;
             top = Application.Top;
             modeText = new Label(modes[0].ToString());
             shuffle = false;
@@ -62,7 +64,8 @@ namespace CLIMusicDotNet
         private void mp_TimeChanged(object sender, MediaPlayerTimeChangedEventArgs e)
         {
 
-		    var current_progress = (float)((double)e.Time / (double)mp.Length);  
+		    var current_progress = (float)((double)e.Time / (double)mp.Length); 
+
 
 	        timerText.Text = TimeSpan.FromMilliseconds(e.Time).ToString().Substring(0, 8) + "/" + TimeSpan.FromMilliseconds(mp.Length).ToString().Substring(0, 8) + " (" + e.Time + "/" + mp.Length + ")" + " " + Convert.ToInt32(current_progress * 100) + "%";
 		    progress.Fraction = current_progress;
@@ -77,26 +80,24 @@ namespace CLIMusicDotNet
             MusicView = new ListView(musicFiles);
             PlayListView = new ListView(playList);
 
-            MusicView.Width = Dim.Fill();
+            MusicView.Width = Dim.Fill() - 1;
             MusicView.Height = Dim.Fill();
 
-            PlayListView.Width = Dim.Fill();
+            PlayListView.Width = Dim.Fill() - 1;
             PlayListView.Height = Dim.Fill();
 
-            Button playButton = new Button(1, 7, "Play");
+            Button playButton = new Button(1, 8, "Play");
 
             Button set_button = new Button(5, 5, "Ok");
             Button set_url_button = new Button(5, 5, "Ok");
 
 
-            Button bookMarkButton = new Button(30, 7, "Bookmark");
-            Button skipButton = new Button(20, 7, "Skip");
+            Button bookMarkButton = new Button(30, 8, "Bookmark");
+            Button skipButton = new Button(20, 8, "Skip");
 
             skipButton.Clicked += () => {
 
                 nextTrack();
-
-                
             
             };
             dirText = new Label(new Rect(1, 1, 256, 20), "Current Directory");
@@ -129,7 +130,10 @@ namespace CLIMusicDotNet
 
 
             playButton.Clicked += () => {
+                if(playList.Count > 0)
                 playTrack();
+                else
+                    MessageBox.ErrorQuery("Playlist Empty", "Press Escape to continue");
             };
 
             bookMarkButton.Clicked += () => {
@@ -227,8 +231,9 @@ namespace CLIMusicDotNet
                     {
                         currentTrack = 0;
                     }
-                    
+                    if(playList.Count != 0)
                     playTrack();
+
                 }),
                 new MenuItem("_Clear","", () => {
                     mp.Stop();
@@ -309,16 +314,32 @@ namespace CLIMusicDotNet
             };
 
           
+            var progressFrame = new FrameView()
+            {
+                X = 0,
+                Y = 5,
+                Width = Dim.Fill(),
+                Height = 3,
+                CanFocus = false
+            };
 
 
-            progress = new ProgressBar(new Rect(0, 4, 32, 1)) {
-        
+
+
+            progress = new ProgressBar() {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill() + 1,
+                Height = 1,
             };
 	        progress.Fraction = 0F;
             PlayListWindow.Add(PlayListView);
 
+
+            progressFrame.Add(progress);
             trackPlaying.Add(
-                selectedTrack,
+                selectedTrackTitle,
+                selectedTrackArtist,
                 timerText,
                 modeText
                 );
@@ -328,7 +349,6 @@ namespace CLIMusicDotNet
                 Y = 1,
                 Width = Dim.Fill(),
                 Height = Dim.Percent(88, true)
-
 
             };
             win.Add(   
@@ -349,7 +369,7 @@ namespace CLIMusicDotNet
             top.Add(trackPlaying);
             top.Add(win);
             top.Add(PlayListWindow, dialog, statusBar, url_dialog);
-            trackPlaying.Add(bookMarkButton, progress, playButton, pauseButton, skipButton);
+            trackPlaying.Add(bookMarkButton, progressFrame, playButton, pauseButton, skipButton);
             timerText.Text = "";
 
             currentDirWindow.Add(dirText);
@@ -399,6 +419,10 @@ namespace CLIMusicDotNet
         private void listDirContents()
         {
 
+            var denied_string = "Access Denied";
+            var dir_invalid_string = "Invalid Directory";
+            var key_hint_string = "Press Escape to Continue.";
+
 
             string[] dirs = {};
             try {
@@ -407,14 +431,14 @@ namespace CLIMusicDotNet
             catch (UnauthorizedAccessException)
             {
                 dialog.Visible = false;
-                MessageBox.ErrorQuery("Access Denied.", "Press Escape To Continue");
+                MessageBox.ErrorQuery(denied_string, key_hint_string);
 
                 return;
             }
             catch(DirectoryNotFoundException)
             {
                 dialog.Visible = false;
-                MessageBox.ErrorQuery("Invalid Directory.", "Press Escape To Continue");
+                MessageBox.ErrorQuery(dir_invalid_string, key_hint_string);
                 return;
             }
 
@@ -452,6 +476,11 @@ namespace CLIMusicDotNet
         private void buttonClicked()
         {
             musicDir = @entry.Text.ToString();
+            if(musicDir.Length == 0)
+            {
+                MessageBox.ErrorQuery("Invalid Directory", "Press Escape to Continue");
+                return;
+            }
             listDirContents();
             dialog.Visible = false;
             MusicView.SetFocus();
@@ -546,7 +575,7 @@ namespace CLIMusicDotNet
             if(selected_Item.ToString().Length == 0)
                 return;
 
-            selectedTrack.Text = Path.GetFileName(playList[selected_Item].ToString());
+            selectedTrackTitle.Text = Path.GetFileName(playList[selected_Item].ToString());
             currentTrack = selected_Item;
             playTrack();
         }
@@ -554,7 +583,7 @@ namespace CLIMusicDotNet
         private async void playTrack()
         {
 
-            selectedTrack.Text = Path.GetFileName(playList[currentTrack]);
+            selectedTrackTitle.Text = Path.GetFileName(playList[currentTrack]);
             progress.Fraction = 0F; 
             
             Media media1;
@@ -572,12 +601,8 @@ namespace CLIMusicDotNet
                 await media1.Parse(MediaParseOptions.ParseLocal);
                 var artist = media1.Meta(MetadataType.Artist);
                 var title = media1.Meta(MetadataType.Title);
-                if(artist != null)
-                selectedTrack.Text =  artist + " - " + title;
-                else
-                {
-                    selectedTrack.Text = title;
-                }
+                selectedTrackTitle.Text = title;
+                selectedTrackArtist.Text = artist;
                 
             
             }
