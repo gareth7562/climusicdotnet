@@ -48,7 +48,7 @@ namespace CLIMusicDotNet
         {
             Application.Init();
 
-            Application.UseSystemConsole = true;
+            Application.UseSystemConsole = true; 
             top = Application.Top;
             modeText = new Label(modes[0].ToString());
             shuffle = false;
@@ -97,6 +97,7 @@ namespace CLIMusicDotNet
 
             skipButton.Clicked += () => {
 
+                if(playList.Count > 0)
                 nextTrack();
             
             };
@@ -240,6 +241,7 @@ namespace CLIMusicDotNet
                     playList.Clear();
                     playListTable.Clear();
                     PlayListView.SetSource(playList);
+                    currentTrack = 0;
 
 
                 }),
@@ -413,7 +415,6 @@ namespace CLIMusicDotNet
             top.Height = Dim.Fill();
             top.Width = Dim.Fill();
             
-
         }
         
         private void listDirContents()
@@ -598,6 +599,7 @@ namespace CLIMusicDotNet
             {
                 media1 = new Media(_libVLC, playListTable[currentTrack].directory, FromType.FromPath);
                 mp.Play(media1);
+                mp.Position = 0;
                 await media1.Parse(MediaParseOptions.ParseLocal);
                 var artist = media1.Meta(MetadataType.Artist);
                 var title = media1.Meta(MetadataType.Title);
@@ -629,7 +631,8 @@ namespace CLIMusicDotNet
         {
 
 
-            if (mp.State != VLCState.Playing && currentTrack < playList.Count - 1 && mp.State != VLCState.Paused)
+            if (mp.State != VLCState.Playing && currentTrack < playList.Count - 1 && 
+            mp.State != VLCState.Paused && mp.State != VLCState.Stopped)
             {
 
                 mp.SetPause(false);
